@@ -8,7 +8,7 @@ import streamlit as st
 
 SHEET_ID = "1sqMBlw0EjRBMxgL1Fw9iGpzZ-JW5lVR5TQx5qiJW9-c"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=924561124"
-EXPECTED = {0: "Harvest Date", 2: "Farm", 5: "Crop", 6: "KG", 7: "Group", 8: "Incentive Per Crop"}
+EXPECTED = ("Harvest Date", "Farm", "Crop", "KG", "Group", "Incentive Per Crop")
 
 
 def parse_numbers(values):
@@ -29,13 +29,15 @@ def parse_dates(values):
 
 
 def clean_data(raw):
-    if len(raw.columns) < 9:
-        raise ValueError("Clean Data must contain columns A through I.")
-    for position, expected in EXPECTED.items():
-        actual = str(raw.columns[position]).strip().lstrip("\ufeff")
-        if actual.casefold() != expected.casefold():
-            raise ValueError(f"Column {chr(65 + position)}: expected '{expected}', found '{actual}'.")
-    df = raw.iloc[:, [0, 2, 5, 6, 7, 8]].copy()
+    # Use column names so inserted or reordered columns do not change the metrics.
+    normalized = [str(name).strip().lstrip("\ufeff").casefold() for name in raw.columns]
+    positions = []
+    for expected in EXPECTED:
+        matches = [i for i, name in enumerate(normalized) if name == expected.casefold()]
+        if len(matches) != 1:
+            raise ValueError(f"Clean Data must contain exactly one '{expected}' column.")
+        positions.append(matches[0])
+    df = raw.iloc[:, positions].copy()
     df.columns = ["Harvest Date", "Farm", "Crop", "Shipment", "Group", "Incentive"]
     # Exclude empty or non-numeric incentive values before building any filters or totals.
     df["Incentive"] = parse_numbers(df["Incentive"])

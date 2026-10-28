@@ -318,68 +318,119 @@ group_totals = filtered.groupby("Group", as_index=False)["Incentive"].sum().sort
 with st.container(key="chart_card_crops"):
     st.subheader("Top Ranked Crops by Shipment")
     with st.container(key="sort_toolbar_crops"):
-        sort_axis = st.selectbox("⇅ Sort By", ["Y-Axis (Crop)", "X-Axis (Shipment)"], key="sort_axis_crops")
-        sort_order = st.selectbox("↕ Order", ["⬇️ Descending", "⬆️ Ascending"], key="sort_order_crops")
+        type_col, axis_col, order_col = st.columns(3)
+        chart_type = type_col.selectbox("◉ Chart Type", ["📊 Horizontal Bar", "📶 Vertical Bar", "📈 Line", "🍩 Donut / Pie"], key="type_crops")
+        sort_axis = axis_col.selectbox("⇅ Sort By", ["Y-Axis (Crop)", "X-Axis (Shipment)"], key="sort_axis_crops")
+        sort_order = order_col.selectbox("↕ Order", ["⬇️ Descending", "⬆️ Ascending"], key="sort_order_crops")
     crop_totals = crop_totals.sort_values(["Crop"] if sort_axis.startswith("Y-Axis") else ["Shipment", "Crop"], ascending=sort_order.startswith("⬆️"), kind="stable")
-    fig = px.bar(crop_totals, x="Shipment", y="Crop", text="Shipment", orientation="h", labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
-    fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside", cliponaxis=False)
-    fig.update_layout(dragmode=False)
-    # Keep the original crop names for grouping and hover; wrap only axis labels.
     crop_names = crop_totals["Crop"].tolist()
-    wrapped_names = ["<br>".join(escape(line) for line in wrap(name, width=25, break_long_words=False, break_on_hyphens=False)) for name in crop_names]
-    fig.update_layout(yaxis={"categoryorder": "array", "categoryarray": crop_names, "autorange": "reversed", "tickmode": "array", "tickvals": crop_names, "ticktext": wrapped_names, "tickfont": {"size": 11}, "title": {"standoff": 55}, "automargin": True}, height=max(380, 44 * len(crop_totals) + 100), margin=dict(l=280, r=90), paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
-    if crop_totals["Shipment"].max() > 0:
-        fig.update_xaxes(range=[min(0, crop_totals["Shipment"].min() * 1.2), crop_totals["Shipment"].max() * 1.18])
-    mobile_fig = fig.to_dict()
-    mobile_fig["layout"]["yaxis"].update(ticktext=["<br>".join(escape(line) for line in wrap(name, width=16, break_long_words=False, break_on_hyphens=False)) for name in crop_names], tickfont={"size": 9}, title={"standoff": 5})
-    mobile_fig["layout"]["margin"] = dict(l=115, r=45, t=30, b=50)
-    with st.container(key="desktop_crop_chart"):
-        st.plotly_chart(fig, width="stretch", theme=None, key="crop_desktop", config={"scrollZoom": False, "displayModeBar": False, "staticPlot": False})
-    with st.container(key="mobile_crop_chart"):
-        st.plotly_chart(mobile_fig, width="stretch", theme=None, key="crop_mobile", config={"scrollZoom": False, "displayModeBar": False, "staticPlot": False})
+    if chart_type == "🍩 Donut / Pie" and ((crop_totals["Shipment"] < 0).any() or crop_totals["Shipment"].sum() <= 0):
+        st.info("The selected shipment values cannot be shown as a proportion.")
+    else:
+        if chart_type == "📊 Horizontal Bar":
+            fig = px.bar(crop_totals, x="Shipment", y="Crop", text="Shipment", orientation="h", labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
+            fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside", cliponaxis=False)
+            wrapped_names = ["<br>".join(escape(line) for line in wrap(name, width=25, break_long_words=False, break_on_hyphens=False)) for name in crop_names]
+            fig.update_layout(yaxis={"categoryorder": "array", "categoryarray": crop_names, "autorange": "reversed", "tickmode": "array", "tickvals": crop_names, "ticktext": wrapped_names, "tickfont": {"size": 11}, "title": {"standoff": 55}, "automargin": True}, height=max(380, 44 * len(crop_totals) + 100), margin=dict(l=280, r=90))
+            if crop_totals["Shipment"].max() > 0:
+                fig.update_xaxes(range=[min(0, crop_totals["Shipment"].min() * 1.2), crop_totals["Shipment"].max() * 1.18])
+        elif chart_type == "🍩 Donut / Pie":
+            fig = px.pie(crop_totals, names="Crop", values="Shipment", hole=0.45)
+            fig.update_traces(sort=False, direction="clockwise", textposition="outside", texttemplate="%{label}<br>%{value:,.1f} kg<br>%{percent:.1%}")
+            fig.update_layout(height=max(600, 38 * len(crop_totals)), margin=dict(l=100, r=100, t=100, b=90), showlegend=False)
+        else:
+            if chart_type == "📶 Vertical Bar":
+                fig = px.bar(crop_totals, x="Crop", y="Shipment", text="Shipment", labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
+                fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside", cliponaxis=False)
+            else:
+                fig = px.line(crop_totals, x="Crop", y="Shipment", text="Shipment", markers=True, labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
+                fig.update_traces(texttemplate="%{text:,.1f}", textposition="top center", cliponaxis=False)
+            fig.update_xaxes(categoryorder="array", categoryarray=crop_names, tickangle=-45, automargin=True)
+            fig.update_yaxes(automargin=True)
+            fig.update_layout(height=520, margin=dict(l=60, r=40, t=60, b=130))
+        fig.update_layout(dragmode=False, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
+        mobile_fig = fig.to_dict()
+        if chart_type == "📊 Horizontal Bar":
+            mobile_fig["layout"]["yaxis"].update(ticktext=["<br>".join(escape(line) for line in wrap(name, width=16, break_long_words=False, break_on_hyphens=False)) for name in crop_names], tickfont={"size": 9}, title={"standoff": 5})
+            mobile_fig["layout"]["margin"] = dict(l=115, r=45, t=30, b=50)
+        elif chart_type == "🍩 Donut / Pie":
+            mobile_fig["layout"]["margin"] = dict(l=65, r=65, t=100, b=90)
+        with st.container(key="desktop_crop_chart"):
+            st.plotly_chart(fig, width="stretch", theme=None, key="crop_desktop", config={"scrollZoom": False, "displayModeBar": False, "staticPlot": False})
+        with st.container(key="mobile_crop_chart"):
+            st.plotly_chart(mobile_fig, width="stretch", theme=None, key="crop_mobile", config={"scrollZoom": False, "displayModeBar": False, "staticPlot": False})
 
 left, right = st.columns(2)
 with left:
     with st.container(key="chart_card_farm"):
         st.subheader("Total Shipment by Farm")
         with st.container(key="sort_toolbar_farm"):
-            sort_axis = st.selectbox("⇅ Sort By", ["Y-Axis (Shipment)", "X-Axis (Farm)"], key="sort_axis_farm")
-            sort_order = st.selectbox("↕ Order", ["⬇️ Descending", "⬆️ Ascending"], key="sort_order_farm")
+            type_col, axis_col, order_col = st.columns(3)
+            chart_type = type_col.selectbox("◉ Chart Type", ["📶 Vertical Bar", "📊 Horizontal Bar", "🍩 Donut / Pie", "📈 Line"], key="type_farm")
+            sort_axis = axis_col.selectbox("⇅ Sort By", ["Y-Axis (Shipment)", "X-Axis (Farm)"], key="sort_axis_farm")
+            sort_order = order_col.selectbox("↕ Order", ["⬇️ Descending", "⬆️ Ascending"], key="sort_order_farm")
         farm_totals = farm_totals.sort_values(["Shipment", "Farm"] if sort_axis.startswith("Y-Axis") else ["Farm"], ascending=sort_order.startswith("⬆️"), kind="stable")
-        fig = px.bar(farm_totals, x="Farm", y="Shipment", text="Shipment", labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
-        fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside", cliponaxis=False)
-        fig.update_layout(margin=dict(t=45), paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
-        fig.update_xaxes(categoryorder="array", categoryarray=farm_totals["Farm"].tolist())
-        if farm_totals["Shipment"].max() > 0:
-            fig.update_yaxes(range=[min(0, farm_totals["Shipment"].min() * 1.2), farm_totals["Shipment"].max() * 1.18])
-        st.plotly_chart(fig, width="stretch", theme=None)
+        farm_names = farm_totals["Farm"].tolist()
+        if chart_type == "🍩 Donut / Pie" and ((farm_totals["Shipment"] < 0).any() or farm_totals["Shipment"].sum() <= 0):
+            st.info("The selected shipment values cannot be shown as a proportion.")
+        else:
+            if chart_type == "🍩 Donut / Pie":
+                fig = px.pie(farm_totals, names="Farm", values="Shipment", hole=0.45)
+                fig.update_traces(sort=False, direction="clockwise", textposition="outside", texttemplate="%{label}<br>%{value:,.1f} kg<br>%{percent:.1%}")
+                fig.update_layout(margin=dict(l=75, r=75, t=60, b=60), height=480, showlegend=False)
+            elif chart_type == "📊 Horizontal Bar":
+                fig = px.bar(farm_totals, x="Shipment", y="Farm", text="Shipment", orientation="h", labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
+                fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside", cliponaxis=False)
+                fig.update_yaxes(categoryorder="array", categoryarray=farm_names, autorange="reversed")
+                fig.update_layout(margin=dict(l=70, r=75, t=45, b=55))
+            else:
+                if chart_type == "📈 Line":
+                    fig = px.line(farm_totals, x="Farm", y="Shipment", text="Shipment", markers=True, labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
+                    fig.update_traces(texttemplate="%{text:,.1f}", textposition="top center", cliponaxis=False)
+                else:
+                    fig = px.bar(farm_totals, x="Farm", y="Shipment", text="Shipment", labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
+                    fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside", cliponaxis=False)
+                fig.update_xaxes(categoryorder="array", categoryarray=farm_names)
+                if farm_totals["Shipment"].max() > 0:
+                    fig.update_yaxes(range=[min(0, farm_totals["Shipment"].min() * 1.2), farm_totals["Shipment"].max() * 1.18])
+                fig.update_layout(margin=dict(t=45))
+            fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
+            st.plotly_chart(fig, width="stretch", theme=None)
 with right:
     with st.container(key="chart_card_incentive"):
         st.subheader("Incentive Distribution")
         with st.container(key="sort_toolbar_incentive"):
-            sort_axis = st.selectbox("⇅ Sort By", ["Y-Axis (Incentive)", "X-Axis (Group)"], key="sort_axis_incentive")
-            sort_order = st.selectbox("↕ Order", ["⬇️ Descending", "⬆️ Ascending"], key="sort_order_incentive")
+            type_col, axis_col, order_col = st.columns(3)
+            chart_type = type_col.selectbox("◉ Chart Type", ["🍩 Donut", "📶 Vertical Bar", "📊 Horizontal Bar", "🥧 Pie"], key="type_incentive")
+            sort_axis = axis_col.selectbox("⇅ Sort By", ["Y-Axis (Incentive)", "X-Axis (Group)"], key="sort_axis_incentive")
+            sort_order = order_col.selectbox("↕ Order", ["⬇️ Descending", "⬆️ Ascending"], key="sort_order_incentive")
         group_totals = group_totals.sort_values(["Incentive", "Group"] if sort_axis.startswith("Y-Axis") else ["Group"], ascending=sort_order.startswith("⬆️"), kind="stable")
-        if (group_totals["Incentive"] < 0).any():
-            fig = px.bar(group_totals, x="Group", y="Incentive", labels={"Incentive": "Incentive (RM)"}, color_discrete_sequence=["#ff9100"])
-            fig.update_xaxes(categoryorder="array", categoryarray=group_totals["Group"].tolist())
+        group_names = group_totals["Group"].tolist()
+        is_pie = chart_type in ("🍩 Donut", "🥧 Pie")
+        if is_pie and ((group_totals["Incentive"] < 0).any() or group_totals["Incentive"].sum() <= 0):
+            st.info("The selected incentive values cannot be shown as a proportion.")
         else:
-            fig = px.pie(group_totals, names="Group", values="Incentive", hole=0.45)
-            fig.update_traces(
-                sort=False,
-                direction="clockwise",
-                automargin=False,
-                rotation=90,
-                domain=dict(x=[0, 1], y=[0.18, 0.82]),
-                textposition="outside",
-                texttemplate="<b>%{label}</b><br>RM %{value:,.2f}<br>(%{percent:.1%})",
-                textfont=dict(size=11),
-            )
-            fig.update_layout(showlegend=False, height=800, margin=dict(l=75, r=75, t=110, b=90))
-        fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font_color="#202124")
-        mobile_fig = fig.to_dict()
-        mobile_fig["layout"]["margin"] = dict(l=65, r=65, t=110, b=90)
-        with st.container(key="desktop_incentive_chart"):
-            st.plotly_chart(fig, width="stretch", theme=None, key="incentive_desktop")
-        with st.container(key="mobile_incentive_chart"):
-            st.plotly_chart(mobile_fig, width="stretch", theme=None, key="incentive_mobile")
+            if is_pie:
+                fig = px.pie(group_totals, names="Group", values="Incentive", hole=0.45 if chart_type == "🍩 Donut" else 0)
+                fig.update_traces(sort=False, direction="clockwise", automargin=False, rotation=90, domain=dict(x=[0, 1], y=[0.18, 0.82]), textposition="outside", texttemplate="<b>%{label}</b><br>RM %{value:,.2f}<br>(%{percent:.1%})", textfont=dict(size=11))
+                fig.update_layout(showlegend=False, height=800, margin=dict(l=75, r=75, t=110, b=90))
+            elif chart_type == "📊 Horizontal Bar":
+                fig = px.bar(group_totals, x="Incentive", y="Group", text="Incentive", orientation="h", labels={"Incentive": "Incentive (RM)"}, color_discrete_sequence=["#ff9100"])
+                fig.update_traces(texttemplate="RM %{text:,.2f}", textposition="outside", cliponaxis=False)
+                fig.update_yaxes(categoryorder="array", categoryarray=group_names, autorange="reversed")
+                fig.update_xaxes(tickprefix="RM ", tickformat=",")
+                fig.update_layout(margin=dict(l=75, r=110, t=45, b=55))
+            else:
+                fig = px.bar(group_totals, x="Group", y="Incentive", text="Incentive", labels={"Incentive": "Incentive (RM)"}, color_discrete_sequence=["#ff9100"])
+                fig.update_traces(texttemplate="RM %{text:,.2f}", textposition="outside", cliponaxis=False)
+                fig.update_xaxes(categoryorder="array", categoryarray=group_names)
+                fig.update_yaxes(tickprefix="RM ", tickformat=",")
+                fig.update_layout(margin=dict(t=60, r=30))
+            fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font_color="#202124")
+            mobile_fig = fig.to_dict()
+            if is_pie:
+                mobile_fig["layout"]["margin"] = dict(l=65, r=65, t=110, b=90)
+            with st.container(key="desktop_incentive_chart"):
+                st.plotly_chart(fig, width="stretch", theme=None, key="incentive_desktop")
+            with st.container(key="mobile_incentive_chart"):
+                st.plotly_chart(mobile_fig, width="stretch", theme=None, key="incentive_mobile")

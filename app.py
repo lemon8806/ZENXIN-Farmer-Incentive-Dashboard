@@ -90,10 +90,37 @@ st.markdown("""
     div[data-testid="stMetricValue"],
     div[class*="st-key-chart_card_"] h3 { color: #202124; }
     div[data-testid="stMetricValue"] { font-weight: 700; }
+    .mobile-filter-hint, .st-key-mobile_crop_chart, .st-key-mobile_incentive_chart { display: none; }
+    @media (max-width: 768px) {
+        section[data-testid="stMain"] [data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
+        }
+        section[data-testid="stMain"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            width: 100% !important; flex: 1 1 100% !important; min-width: 0 !important;
+        }
+        section[data-testid="stMain"] .block-container { padding: 1rem 0.75rem 2rem; }
+        div[data-testid="stMetric"], div[class*="st-key-chart_card_"] { padding: 1rem; }
+        div[data-testid="stMetricValue"] { font-size: clamp(1.35rem, 6vw, 2rem); }
+        .mobile-filter-hint { display: block; color: #475569; font-size: 0.86rem; margin: 0 0 0.75rem; }
+        [data-testid="stSidebarCollapsedControl"] button { min-width: 44px; min-height: 44px; background: #EFF6FF; border-radius: 10px; }
+        section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div,
+        section[data-testid="stSidebar"] .stMultiSelect .react-aria-ComboBox > [role="group"] {
+            height: 180px; min-height: 180px; max-height: 180px;
+        }
+        section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] { min-height: 180px; }
+        section[data-testid="stSidebar"] .stMultiSelect [data-tag],
+        section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] { min-height: 32px; margin: 3px; }
+        section[data-testid="stSidebar"] .stMultiSelect [data-tag] button { min-width: 32px; min-height: 32px; }
+        section[data-testid="stSidebar"] .stMultiSelect [data-testid="stMultiSelectTagsContainer"]::-webkit-scrollbar,
+        section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div::-webkit-scrollbar { width: 8px; }
+        .st-key-desktop_crop_chart, .st-key-desktop_incentive_chart { display: none; }
+        .st-key-mobile_crop_chart, .st-key-mobile_incentive_chart { display: block; }
+    }
 </style>
 """, unsafe_allow_html=True)
 st.title("Farmer Incentive Dashboard")
 st.caption("Shipment and incentive performance across your farms")
+st.markdown('<div class="mobile-filter-hint">💡 Tap the top-left arrow to open filters.</div>', unsafe_allow_html=True)
 
 try:
     data = load_data()
@@ -202,7 +229,13 @@ with st.container(key="chart_card_crops"):
     fig.update_layout(yaxis={"categoryorder": "total ascending", "tickmode": "array", "tickvals": crop_names, "ticktext": wrapped_names, "tickfont": {"size": 11}, "title": {"standoff": 55}, "automargin": True}, height=max(380, 44 * len(crop_totals) + 100), margin=dict(l=280, r=90), paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
     if crop_totals["Shipment"].max() > 0:
         fig.update_xaxes(range=[min(0, crop_totals["Shipment"].min() * 1.2), crop_totals["Shipment"].max() * 1.18])
-    st.plotly_chart(fig, width="stretch", theme=None)
+    mobile_fig = fig.to_dict()
+    mobile_fig["layout"]["yaxis"].update(ticktext=["<br>".join(escape(line) for line in wrap(name, width=16, break_long_words=False, break_on_hyphens=False)) for name in crop_names], tickfont={"size": 9}, title={"standoff": 5})
+    mobile_fig["layout"]["margin"] = dict(l=115, r=45, t=30, b=50)
+    with st.container(key="desktop_crop_chart"):
+        st.plotly_chart(fig, width="stretch", theme=None, key="crop_desktop")
+    with st.container(key="mobile_crop_chart"):
+        st.plotly_chart(mobile_fig, width="stretch", theme=None, key="crop_mobile")
 
 left, right = st.columns(2)
 with left:
@@ -228,4 +261,9 @@ with right:
             )
             fig.update_layout(showlegend=False, height=650, margin=dict(l=100, r=100, t=30, b=30))
         fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font_color="#202124")
-        st.plotly_chart(fig, width="stretch", theme=None)
+        mobile_fig = fig.to_dict()
+        mobile_fig["layout"]["margin"] = dict(l=45, r=45, t=25, b=25)
+        with st.container(key="desktop_incentive_chart"):
+            st.plotly_chart(fig, width="stretch", theme=None, key="incentive_desktop")
+        with st.container(key="mobile_incentive_chart"):
+            st.plotly_chart(mobile_fig, width="stretch", theme=None, key="incentive_mobile")

@@ -139,5 +139,11 @@ with right:
             fig = px.bar(group_totals, x="Group", y="Incentive", labels={"Incentive": "Incentive (RM)"}, color_discrete_sequence=["#ff9100"])
         else:
             fig = px.pie(group_totals, names="Group", values="Incentive", hole=0.45)
+            fig.update_traces(
+                textposition="outside",
+                texttemplate="<b>%{label}</b><br>RM %{value:,.2f}<br>(%{percent:.1%})",
+                textfont=dict(size=11),
+            )
+            fig.update_layout(showlegend=False, height=650, margin=dict(l=100, r=100, t=30, b=30))
         fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font_color="#202124")
         st.plotly_chart(fig, width="stretch", theme=None)

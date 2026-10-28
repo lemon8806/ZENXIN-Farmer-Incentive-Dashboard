@@ -56,6 +56,8 @@ st.markdown("""
         border-radius: 7px; padding: 5px 8px; background: #FFFFFF;
     }
     section[data-testid="stSidebar"] .st-key-date_tree [data-testid="stVerticalBlock"] { gap: 0.15rem; }
+    section[data-testid="stSidebar"] .st-key-date_tree [data-testid="stHorizontalBlock"] { gap: 0.15rem; align-items: center; }
+    section[data-testid="stSidebar"] .st-key-date_tree button { min-height: 1.6rem; padding: 0; border: 0; background: transparent; color: #475569; }
     section[data-testid="stSidebar"] [class*="st-key-tree_month_"] { margin-left: 18px; padding-left: 8px; border-left: 1px solid #CBD5E1; }
     section[data-testid="stSidebar"] [class*="st-key-tree_days_"] { margin-left: 18px; padding-left: 8px; border-left: 1px solid #CBD5E1; }
     /* The selected chips scroll inside a fixed-height field; the menu is a portal. */
@@ -170,8 +172,10 @@ with st.sidebar:
     months = {year: sorted({d.month for d in dates if d.year == year}) for year in years}
     for year in years:
         st.session_state.setdefault(f"date_year_{year}", True)
+        st.session_state.setdefault(f"date_year_open_{year}", True)
         for month in months[year]:
             st.session_state.setdefault(f"date_month_{year}_{month}", True)
+            st.session_state.setdefault(f"date_month_open_{year}_{month}", False)
     for day in dates:
         st.session_state.setdefault(f"date_day_{day.isoformat()}", True)
 
@@ -202,6 +206,9 @@ with st.sidebar:
     def set_filter(key, value):
         st.session_state[key] = value
 
+    def toggle_tree_node(key):
+        st.session_state[key] = not st.session_state[key]
+
     def reset_filters():
         for key, value in defaults.items():
             st.session_state[key] = value
@@ -220,14 +227,22 @@ with st.sidebar:
         if date_mode == "Date Tree":
             with st.container(height=280, border=True, key="date_tree"):
                 for year in years:
-                    st.checkbox(str(year), key=f"date_year_{year}", on_change=set_year, args=(year,), persist_state="session")
-                    for month in months[year]:
-                        with st.container(key=f"tree_month_{year}_{month}"):
-                            st.checkbox(month_name[month], key=f"date_month_{year}_{month}", on_change=set_month, args=(year, month), persist_state="session")
-                            with st.container(key=f"tree_days_{year}_{month}"):
-                                for day in dates:
-                                    if day.year == year and day.month == month:
-                                        st.checkbox(f"{day.day:02d}", key=f"date_day_{day.isoformat()}", on_change=sync_parents, args=(year,), persist_state="session")
+                    year_open = f"date_year_open_{year}"
+                    arrow, label = st.columns([1, 6], gap="small", vertical_alignment="center")
+                    arrow.button("▾" if st.session_state[year_open] else "▸", key=f"toggle_year_{year}", on_click=toggle_tree_node, args=(year_open,), help=f"Toggle {year}")
+                    label.checkbox(str(year), key=f"date_year_{year}", on_change=set_year, args=(year,), persist_state="session")
+                    if st.session_state[year_open]:
+                        for month in months[year]:
+                            with st.container(key=f"tree_month_{year}_{month}"):
+                                month_open = f"date_month_open_{year}_{month}"
+                                arrow, label = st.columns([1, 6], gap="small", vertical_alignment="center")
+                                arrow.button("▾" if st.session_state[month_open] else "▸", key=f"toggle_month_{year}_{month}", on_click=toggle_tree_node, args=(month_open,), help=f"Toggle {month_name[month]} {year}")
+                                label.checkbox(month_name[month], key=f"date_month_{year}_{month}", on_change=set_month, args=(year, month), persist_state="session")
+                                if st.session_state[month_open]:
+                                    with st.container(key=f"tree_days_{year}_{month}"):
+                                        for day in dates:
+                                            if day.year == year and day.month == month:
+                                                st.checkbox(f"{day.day:02d}", key=f"date_day_{day.isoformat()}", on_change=sync_parents, args=(year,), persist_state="session")
             selected_tree_dates = {day for day in dates if st.session_state[f"date_day_{day.isoformat()}"]}
         elif date_mode == "Date Range":
             date_range = st.date_input("Date Range", min_value=start, max_value=end, key="filter_range", persist_state="session")

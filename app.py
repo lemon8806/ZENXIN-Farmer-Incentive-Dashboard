@@ -368,14 +368,17 @@ with right:
             fig.update_traces(
                 sort=False,
                 direction="clockwise",
+                automargin=False,
+                rotation=90,
+                domain=dict(x=[0, 1], y=[0.18, 0.82]),
                 textposition="outside",
                 texttemplate="<b>%{label}</b><br>RM %{value:,.2f}<br>(%{percent:.1%})",
                 textfont=dict(size=11),
             )
-            fig.update_layout(showlegend=False, height=650, margin=dict(l=100, r=100, t=30, b=30))
+            fig.update_layout(showlegend=False, height=800, margin=dict(l=75, r=75, t=110, b=90))
         fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font_color="#202124")
         mobile_fig = fig.to_dict()
-        mobile_fig["layout"]["margin"] = dict(l=45, r=45, t=25, b=25)
+        mobile_fig["layout"]["margin"] = dict(l=65, r=65, t=110, b=90)
         with st.container(key="desktop_incentive_chart"):
             st.plotly_chart(fig, width="stretch", theme=None, key="incentive_desktop")
         with st.container(key="mobile_incentive_chart"):

@@ -96,6 +96,16 @@ st.markdown("""
     div[data-testid="stMetricValue"],
     div[class*="st-key-chart_card_"] h3 { color: #202124; }
     div[data-testid="stMetricValue"] { font-weight: 700; }
+    div[class*="st-key-sort_toolbar_"] {
+        background: #F8FAFC; border: 1px solid #CBD5E1;
+        border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem;
+    }
+    div[class*="st-key-sort_toolbar_"] [data-testid="stWidgetLabel"] p {
+        font-weight: 700; color: #1E3A8A; font-size: 0.95rem;
+    }
+    div[class*="st-key-sort_toolbar_"] [data-testid="stSelectbox"] [role="combobox"] {
+        border-color: #CBD5E1;
+    }
     div.st-key-chart_card_crops {
         max-height: 520px;
         overflow-y: auto !important;
@@ -307,13 +317,17 @@ group_totals = filtered.groupby("Group", as_index=False)["Incentive"].sum().sort
 
 with st.container(key="chart_card_crops"):
     st.subheader("Top Ranked Crops by Shipment")
+    with st.container(key="sort_toolbar_crops"):
+        sort_axis = st.selectbox("⇅ Sort By", ["Y-Axis (Crop)", "X-Axis (Shipment)"], key="sort_axis_crops")
+        sort_order = st.selectbox("↕ Order", ["⬇️ Descending", "⬆️ Ascending"], key="sort_order_crops")
+    crop_totals = crop_totals.sort_values(["Crop"] if sort_axis.startswith("Y-Axis") else ["Shipment", "Crop"], ascending=sort_order.startswith("⬆️"), kind="stable")
     fig = px.bar(crop_totals, x="Shipment", y="Crop", text="Shipment", orientation="h", labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
     fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside", cliponaxis=False)
     fig.update_layout(dragmode=False)
     # Keep the original crop names for grouping and hover; wrap only axis labels.
     crop_names = crop_totals["Crop"].tolist()
     wrapped_names = ["<br>".join(escape(line) for line in wrap(name, width=25, break_long_words=False, break_on_hyphens=False)) for name in crop_names]
-    fig.update_layout(yaxis={"categoryorder": "total ascending", "tickmode": "array", "tickvals": crop_names, "ticktext": wrapped_names, "tickfont": {"size": 11}, "title": {"standoff": 55}, "automargin": True}, height=max(380, 44 * len(crop_totals) + 100), margin=dict(l=280, r=90), paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
+    fig.update_layout(yaxis={"categoryorder": "array", "categoryarray": crop_names, "autorange": "reversed", "tickmode": "array", "tickvals": crop_names, "ticktext": wrapped_names, "tickfont": {"size": 11}, "title": {"standoff": 55}, "automargin": True}, height=max(380, 44 * len(crop_totals) + 100), margin=dict(l=280, r=90), paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
     if crop_totals["Shipment"].max() > 0:
         fig.update_xaxes(range=[min(0, crop_totals["Shipment"].min() * 1.2), crop_totals["Shipment"].max() * 1.18])
     mobile_fig = fig.to_dict()
@@ -328,20 +342,32 @@ left, right = st.columns(2)
 with left:
     with st.container(key="chart_card_farm"):
         st.subheader("Total Shipment by Farm")
+        with st.container(key="sort_toolbar_farm"):
+            sort_axis = st.selectbox("⇅ Sort By", ["Y-Axis (Shipment)", "X-Axis (Farm)"], key="sort_axis_farm")
+            sort_order = st.selectbox("↕ Order", ["⬇️ Descending", "⬆️ Ascending"], key="sort_order_farm")
+        farm_totals = farm_totals.sort_values(["Shipment", "Farm"] if sort_axis.startswith("Y-Axis") else ["Farm"], ascending=sort_order.startswith("⬆️"), kind="stable")
         fig = px.bar(farm_totals, x="Farm", y="Shipment", text="Shipment", labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
         fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside", cliponaxis=False)
         fig.update_layout(margin=dict(t=45), paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
+        fig.update_xaxes(categoryorder="array", categoryarray=farm_totals["Farm"].tolist())
         if farm_totals["Shipment"].max() > 0:
             fig.update_yaxes(range=[min(0, farm_totals["Shipment"].min() * 1.2), farm_totals["Shipment"].max() * 1.18])
         st.plotly_chart(fig, width="stretch", theme=None)
 with right:
     with st.container(key="chart_card_incentive"):
         st.subheader("Incentive Distribution")
+        with st.container(key="sort_toolbar_incentive"):
+            sort_axis = st.selectbox("⇅ Sort By", ["Y-Axis (Incentive)", "X-Axis (Group)"], key="sort_axis_incentive")
+            sort_order = st.selectbox("↕ Order", ["⬇️ Descending", "⬆️ Ascending"], key="sort_order_incentive")
+        group_totals = group_totals.sort_values(["Incentive", "Group"] if sort_axis.startswith("Y-Axis") else ["Group"], ascending=sort_order.startswith("⬆️"), kind="stable")
         if (group_totals["Incentive"] < 0).any():
             fig = px.bar(group_totals, x="Group", y="Incentive", labels={"Incentive": "Incentive (RM)"}, color_discrete_sequence=["#ff9100"])
+            fig.update_xaxes(categoryorder="array", categoryarray=group_totals["Group"].tolist())
         else:
             fig = px.pie(group_totals, names="Group", values="Incentive", hole=0.45)
             fig.update_traces(
+                sort=False,
+                direction="clockwise",
                 textposition="outside",
                 texttemplate="<b>%{label}</b><br>RM %{value:,.2f}<br>(%{percent:.1%})",
                 textfont=dict(size=11),

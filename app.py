@@ -90,8 +90,23 @@ st.markdown("""
     div[data-testid="stMetricValue"],
     div[class*="st-key-chart_card_"] h3 { color: #202124; }
     div[data-testid="stMetricValue"] { font-weight: 700; }
+    div.st-key-chart_card_crops {
+        max-height: 520px;
+        overflow-y: auto !important;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+        scrollbar-width: thin;
+        scrollbar-color: #CBD5E1 transparent;
+    }
+    div.st-key-chart_card_crops::-webkit-scrollbar { width: 6px; }
+    div.st-key-chart_card_crops::-webkit-scrollbar-track { background: transparent; }
+    div.st-key-chart_card_crops::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+    div.st-key-chart_card_crops .js-plotly-plot,
+    div.st-key-chart_card_crops .js-plotly-plot * { touch-action: pan-y !important; }
     .mobile-filter-hint, .st-key-mobile_crop_chart, .st-key-mobile_incentive_chart { display: none; }
     @media (max-width: 768px) {
+        div.st-key-chart_card_crops { max-height: 420px; }
         section[data-testid="stMain"] [data-testid="stHorizontalBlock"] {
             flex-wrap: wrap !important;
         }
@@ -223,6 +238,7 @@ with st.container(key="chart_card_crops"):
     st.subheader("Top Ranked Crops by Shipment")
     fig = px.bar(crop_totals, x="Shipment", y="Crop", text="Shipment", orientation="h", labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
     fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside", cliponaxis=False)
+    fig.update_layout(dragmode=False)
     # Keep the original crop names for grouping and hover; wrap only axis labels.
     crop_names = crop_totals["Crop"].tolist()
     wrapped_names = ["<br>".join(escape(line) for line in wrap(name, width=25, break_long_words=False, break_on_hyphens=False)) for name in crop_names]
@@ -233,9 +249,9 @@ with st.container(key="chart_card_crops"):
     mobile_fig["layout"]["yaxis"].update(ticktext=["<br>".join(escape(line) for line in wrap(name, width=16, break_long_words=False, break_on_hyphens=False)) for name in crop_names], tickfont={"size": 9}, title={"standoff": 5})
     mobile_fig["layout"]["margin"] = dict(l=115, r=45, t=30, b=50)
     with st.container(key="desktop_crop_chart"):
-        st.plotly_chart(fig, width="stretch", theme=None, key="crop_desktop")
+        st.plotly_chart(fig, width="stretch", theme=None, key="crop_desktop", config={"scrollZoom": False, "displayModeBar": False, "staticPlot": False})
     with st.container(key="mobile_crop_chart"):
-        st.plotly_chart(mobile_fig, width="stretch", theme=None, key="crop_mobile")
+        st.plotly_chart(mobile_fig, width="stretch", theme=None, key="crop_mobile", config={"scrollZoom": False, "displayModeBar": False, "staticPlot": False})
 
 left, right = st.columns(2)
 with left:

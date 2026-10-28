@@ -9,6 +9,51 @@ from data_loader import load_data
 st.set_page_config(page_title="Farmer Incentive Dashboard", layout="wide")
 st.markdown("""
 <style>
+    section[data-testid="stSidebar"],
+    section[data-testid="stSidebar"] > div { background: #F8FAFC; }
+    section[data-testid="stSidebar"] div[class*="st-key-filter_card_"] {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 0.9rem;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    }
+    section[data-testid="stSidebar"] .filter-heading {
+        color: #0F172A; font-size: 1.3rem; font-weight: 750;
+        letter-spacing: -0.02em; margin-bottom: 0.15rem;
+    }
+    section[data-testid="stSidebar"] .filter-subtitle {
+        color: #64748B; font-size: 0.82rem; margin-bottom: 0.5rem;
+    }
+    section[data-testid="stSidebar"] .filter-title {
+        display: flex; justify-content: space-between; align-items: center;
+        color: #1E293B; font-size: 0.9rem; font-weight: 650;
+    }
+    section[data-testid="stSidebar"] .filter-count {
+        background: #EFF6FF; color: #1D4ED8; border: 1px solid #DBEAFE;
+        border-radius: 999px; padding: 2px 8px; font-size: 0.72rem;
+    }
+    section[data-testid="stSidebar"] .stMultiSelect [data-tag],
+    section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {
+        background: #EFF6FF !important; color: #1D4ED8 !important;
+        border: 1px solid #BFDBFE; border-radius: 6px; font-size: 12px;
+    }
+    section[data-testid="stSidebar"] .stMultiSelect [data-tag] button,
+    section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] button {
+        color: #1D4ED8 !important;
+    }
+    section[data-testid="stSidebar"] .stMultiSelect [data-testid="stMultiSelectTagsContainer"]::-webkit-scrollbar,
+    section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div::-webkit-scrollbar { width: 5px; }
+    section[data-testid="stSidebar"] .stMultiSelect [data-testid="stMultiSelectTagsContainer"]::-webkit-scrollbar-thumb,
+    section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div::-webkit-scrollbar-thumb {
+        background: #CBD5E1; border-radius: 999px;
+    }
+    section[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] {
+        background: #F1F5F9; border-radius: 10px; padding: 4px; gap: 4px;
+    }
+    section[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] label {
+        border-radius: 7px; padding: 5px 8px; background: #FFFFFF;
+    }
     /* The selected chips scroll inside a fixed-height field; the menu is a portal. */
     section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div {
         height: 120px;
@@ -66,21 +111,58 @@ if valid_dates.empty:
     st.stop()
 
 with st.sidebar:
-    st.header("Filters")
     start, end = valid_dates.min().date(), valid_dates.max().date()
-    st.subheader("Harvest Date")
-    date_mode = st.radio("Date selection mode", ["Date Range", "Specific Dates"], horizontal=True, label_visibility="collapsed")
-    if date_mode == "Date Range":
-        date_range = st.date_input("Date Range", value=(start, end), min_value=start, max_value=end)
-    else:
-        dates = sorted(valid_dates.dt.date.unique().tolist())
-        selected_dates = st.multiselect("Specific Dates", dates, default=dates, format_func=lambda d: d.strftime("%d %b %Y"))
+    dates = sorted(valid_dates.dt.date.unique().tolist())
     farms = sorted(data["Farm"].unique().tolist())
     groups = sorted(data["Group"].unique().tolist())
     crops = sorted(data["Crop"].unique().tolist())
-    selected_farms = st.multiselect("Farm", farms, default=farms)
-    selected_groups = st.multiselect("Group", groups, default=groups)
-    selected_crops = st.multiselect("Crop", crops, default=crops)
+    defaults = {"filter_mode": "Date Range", "filter_range": (start, end), "filter_dates": dates,
+                "filter_farms": farms, "filter_groups": groups, "filter_crops": crops}
+    for key, value in defaults.items():
+        st.session_state.setdefault(key, value)
+
+    def set_filter(key, value):
+        st.session_state[key] = value
+
+    def reset_filters():
+        for key, value in defaults.items():
+            st.session_state[key] = value
+
+    st.markdown('<div class="filter-heading">⚑ &nbsp;Filters</div><div class="filter-subtitle">Refine the dashboard to explore your data.</div>', unsafe_allow_html=True)
+    st.button("↺  Reset All Filters", on_click=reset_filters, width="stretch", type="primary")
+    status = st.empty()
+
+    with st.container(key="filter_card_date"):
+        st.markdown('<div class="filter-title">📅 &nbsp;Harvest Date</div>', unsafe_allow_html=True)
+        date_mode = st.radio("Date selection mode", ["Date Range", "Specific Dates"], key="filter_mode", horizontal=True, label_visibility="collapsed", format_func=lambda mode: "📅 Range" if mode == "Date Range" else "📌 Specific")
+        if date_mode == "Date Range":
+            date_range = st.date_input("Date Range", min_value=start, max_value=end, key="filter_range", persist_state="session")
+        else:
+            st.markdown(f'<div class="filter-title">Dates <span class="filter-count">{len(st.session_state.filter_dates)}/{len(dates)}</span></div>', unsafe_allow_html=True)
+            a, b = st.columns(2)
+            a.button("All", key="dates_all", on_click=set_filter, args=("filter_dates", dates), width="stretch")
+            b.button("Clear", key="dates_clear", on_click=set_filter, args=("filter_dates", []), width="stretch")
+            selected_dates = st.multiselect("Specific Dates", dates, key="filter_dates", label_visibility="collapsed", format_func=lambda d: d.strftime("%d %b %Y"), persist_state="session")
+
+    for label, icon, options, key in [("Farm", "🏠", farms, "filter_farms"), ("Group", "🏷️", groups, "filter_groups"), ("Crop", "🌱", crops, "filter_crops")]:
+        with st.container(key=f"filter_card_{label.lower()}"):
+            st.markdown(f'<div class="filter-title">{icon} &nbsp;{label}<span class="filter-count">{len(st.session_state[key])}/{len(options)}</span></div>', unsafe_allow_html=True)
+            a, b = st.columns(2)
+            a.button("All", key=f"{key}_all", on_click=set_filter, args=(key, options), width="stretch")
+            b.button("Clear", key=f"{key}_clear", on_click=set_filter, args=(key, []), width="stretch")
+            st.multiselect(label, options, key=key, label_visibility="collapsed")
+
+    selected_farms = st.session_state.filter_farms
+    selected_groups = st.session_state.filter_groups
+    selected_crops = st.session_state.filter_crops
+    if date_mode == "Date Range" and len(date_range) == 2:
+        sidebar_dates = data["Harvest Date"].dt.date.between(date_range[0], date_range[1])
+    elif date_mode == "Specific Dates":
+        sidebar_dates = data["Harvest Date"].dt.date.isin(selected_dates)
+    else:
+        sidebar_dates = data["Harvest Date"].notna() & False
+    count = (sidebar_dates & data["Farm"].isin(selected_farms) & data["Group"].isin(selected_groups) & data["Crop"].isin(selected_crops)).sum()
+    status.caption(f"Showing {count:,} of {len(data):,} records")
 
 if date_mode == "Date Range":
     if len(date_range) != 2:

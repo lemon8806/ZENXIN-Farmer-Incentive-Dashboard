@@ -1,5 +1,6 @@
 from html import escape
 from textwrap import wrap
+from calendar import month_name
 
 import plotly.express as px
 import streamlit as st
@@ -54,6 +55,9 @@ st.markdown("""
     section[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] label {
         border-radius: 7px; padding: 5px 8px; background: #FFFFFF;
     }
+    section[data-testid="stSidebar"] .st-key-date_tree [data-testid="stVerticalBlock"] { gap: 0.15rem; }
+    section[data-testid="stSidebar"] [class*="st-key-tree_month_"] { margin-left: 18px; padding-left: 8px; border-left: 1px solid #CBD5E1; }
+    section[data-testid="stSidebar"] [class*="st-key-tree_days_"] { margin-left: 18px; padding-left: 8px; border-left: 1px solid #CBD5E1; }
     /* The selected chips scroll inside a fixed-height field; the menu is a portal. */
     section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div {
         height: 120px;
@@ -158,10 +162,42 @@ with st.sidebar:
     farms = sorted(data["Farm"].unique().tolist())
     groups = sorted(data["Group"].unique().tolist())
     crops = sorted(data["Crop"].unique().tolist())
-    defaults = {"filter_mode": "Date Range", "filter_range": (start, end), "filter_dates": dates,
+    defaults = {"filter_mode": "Date Tree", "filter_range": (start, end), "filter_dates": dates,
                 "filter_farms": farms, "filter_groups": groups, "filter_crops": crops}
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
+    years = sorted({d.year for d in dates})
+    months = {year: sorted({d.month for d in dates if d.year == year}) for year in years}
+    for year in years:
+        st.session_state.setdefault(f"date_year_{year}", True)
+        for month in months[year]:
+            st.session_state.setdefault(f"date_month_{year}_{month}", True)
+    for day in dates:
+        st.session_state.setdefault(f"date_day_{day.isoformat()}", True)
+
+    def sync_parents(year):
+        for month in months[year]:
+            st.session_state[f"date_month_{year}_{month}"] = any(
+                st.session_state[f"date_day_{day.isoformat()}"]
+                for day in dates if day.year == year and day.month == month
+            )
+        st.session_state[f"date_year_{year}"] = any(
+            st.session_state[f"date_month_{year}_{month}"] for month in months[year]
+        )
+
+    def set_year(year):
+        value = st.session_state[f"date_year_{year}"]
+        for day in dates:
+            if day.year == year:
+                st.session_state[f"date_day_{day.isoformat()}"] = value
+        sync_parents(year)
+
+    def set_month(year, month):
+        value = st.session_state[f"date_month_{year}_{month}"]
+        for day in dates:
+            if day.year == year and day.month == month:
+                st.session_state[f"date_day_{day.isoformat()}"] = value
+        sync_parents(year)
 
     def set_filter(key, value):
         st.session_state[key] = value
@@ -169,6 +205,10 @@ with st.sidebar:
     def reset_filters():
         for key, value in defaults.items():
             st.session_state[key] = value
+        for day in dates:
+            st.session_state[f"date_day_{day.isoformat()}"] = True
+        for year in years:
+            sync_parents(year)
 
     st.markdown('<div class="filter-heading">⚑ &nbsp;Filters</div><div class="filter-subtitle">Refine the dashboard to explore your data.</div>', unsafe_allow_html=True)
     st.button("↺  Reset All Filters", on_click=reset_filters, width="stretch", type="primary")
@@ -176,8 +216,20 @@ with st.sidebar:
 
     with st.container(key="filter_card_date"):
         st.markdown('<div class="filter-title">📅 &nbsp;Harvest Date</div>', unsafe_allow_html=True)
-        date_mode = st.radio("Date selection mode", ["Date Range", "Specific Dates"], key="filter_mode", horizontal=True, label_visibility="collapsed", format_func=lambda mode: "📅 Range" if mode == "Date Range" else "📌 Specific")
-        if date_mode == "Date Range":
+        date_mode = st.radio("Date selection mode", ["Date Tree", "Date Range", "Specific Dates"], key="filter_mode", horizontal=True, label_visibility="collapsed", format_func=lambda mode: {"Date Tree": "🌳 Tree", "Date Range": "📅 Range", "Specific Dates": "📌 Specific"}[mode])
+        if date_mode == "Date Tree":
+            with st.container(height=280, border=True, key="date_tree"):
+                for year in years:
+                    st.checkbox(str(year), key=f"date_year_{year}", on_change=set_year, args=(year,), persist_state="session")
+                    for month in months[year]:
+                        with st.container(key=f"tree_month_{year}_{month}"):
+                            st.checkbox(month_name[month], key=f"date_month_{year}_{month}", on_change=set_month, args=(year, month), persist_state="session")
+                            with st.container(key=f"tree_days_{year}_{month}"):
+                                for day in dates:
+                                    if day.year == year and day.month == month:
+                                        st.checkbox(f"{day.day:02d}", key=f"date_day_{day.isoformat()}", on_change=sync_parents, args=(year,), persist_state="session")
+            selected_tree_dates = {day for day in dates if st.session_state[f"date_day_{day.isoformat()}"]}
+        elif date_mode == "Date Range":
             date_range = st.date_input("Date Range", min_value=start, max_value=end, key="filter_range", persist_state="session")
         else:
             st.markdown(f'<div class="filter-title">Dates <span class="filter-count">{len(st.session_state.filter_dates)}/{len(dates)}</span></div>', unsafe_allow_html=True)
@@ -197,7 +249,9 @@ with st.sidebar:
     selected_farms = st.session_state.filter_farms
     selected_groups = st.session_state.filter_groups
     selected_crops = st.session_state.filter_crops
-    if date_mode == "Date Range" and len(date_range) == 2:
+    if date_mode == "Date Tree":
+        sidebar_dates = data["Harvest Date"].dt.date.isin(selected_tree_dates)
+    elif date_mode == "Date Range" and len(date_range) == 2:
         sidebar_dates = data["Harvest Date"].dt.date.between(date_range[0], date_range[1])
     elif date_mode == "Specific Dates":
         sidebar_dates = data["Harvest Date"].dt.date.isin(selected_dates)
@@ -206,7 +260,9 @@ with st.sidebar:
     count = (sidebar_dates & data["Farm"].isin(selected_farms) & data["Group"].isin(selected_groups) & data["Crop"].isin(selected_crops)).sum()
     status.caption(f"Showing {count:,} of {len(data):,} records")
 
-if date_mode == "Date Range":
+if date_mode == "Date Tree":
+    date_mask = data["Harvest Date"].dt.date.isin(selected_tree_dates)
+elif date_mode == "Date Range":
     if len(date_range) != 2:
         st.info("Select both the start and end dates.")
         st.stop()

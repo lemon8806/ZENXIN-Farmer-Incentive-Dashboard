@@ -375,8 +375,9 @@ with st.container(key="chart_card_crops"):
             fig.update_layout(height=max(320, min(800, len(crop_totals) * 32 + 80)), margin=dict(l=10, r=10, t=30, b=30))
         vertical_bar = chart_type == "📶 Vertical Bar"
         if vertical_bar:
-            fig.update_yaxes(fixedrange=True)
-        fig.update_layout(dragmode="zoom" if vertical_bar else False, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
+            default_width = min(4000, max(800, ((len(crop_names) * 110 + 99) // 100) * 100))
+            chart_width = st.slider("图表宽度", 800, 4000, default_width, step=100, key="width_crops")
+        fig.update_layout(dragmode=False, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
         mobile_fig = fig.to_dict()
         if chart_type == "📊 Horizontal Bar":
             mobile_fig["layout"]["yaxis"].update(ticktext=["<br>".join(escape(line) for line in wrap(name, width=18, break_long_words=False, break_on_hyphens=False)) for name in crop_names], tickfont={"size": max(6, min(9, 680 // max(1, 2 * len(crop_names))))}, title={"standoff": 5})
@@ -384,9 +385,9 @@ with st.container(key="chart_card_crops"):
         elif chart_type == "🍩 Donut / Pie":
             mobile_fig["layout"]["margin"] = dict(l=10, r=10, t=30, b=30)
         with st.container(key="desktop_crop_chart"):
-            st.plotly_chart(fig, width=max(800, len(crop_names) * 110) if vertical_bar else "stretch", theme=None, key="crop_desktop", config={"responsive": True, "scrollZoom": vertical_bar, "displayModeBar": vertical_bar})
+            st.plotly_chart(fig, width=chart_width if vertical_bar else "stretch", theme=None, key="crop_desktop", config={"responsive": True, "scrollZoom": False, "displayModeBar": False})
         with st.container(key="mobile_crop_chart"):
-            st.plotly_chart(mobile_fig, width=max(800, len(crop_names) * 110) if vertical_bar else "stretch", theme=None, key="crop_mobile", config={"responsive": True, "scrollZoom": vertical_bar, "displayModeBar": vertical_bar})
+            st.plotly_chart(mobile_fig, width=chart_width if vertical_bar else "stretch", theme=None, key="crop_mobile", config={"responsive": True, "scrollZoom": False, "displayModeBar": False})
 
 left, right = st.columns(2)
 with left:
@@ -425,14 +426,14 @@ with left:
             fig.update_layout(height=440, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
             vertical_bar = chart_type == "📶 Vertical Bar"
             if vertical_bar:
-                fig.update_yaxes(fixedrange=True)
-                fig.update_layout(dragmode="zoom")
+                chart_width = st.slider("图表宽度", 800, 4000, 800, step=100, key="width_farm")
+                fig.update_layout(dragmode=False)
             mobile_fig = fig.to_dict()
             mobile_fig["layout"]["height"] = 360
             with st.container(key="desktop_farm_chart"):
-                st.plotly_chart(fig, width="stretch", theme=None, key="farm_desktop", config={"responsive": True, "displayModeBar": vertical_bar, "scrollZoom": vertical_bar})
+                st.plotly_chart(fig, width=chart_width if vertical_bar else "stretch", theme=None, key="farm_desktop", config={"responsive": True, "displayModeBar": False, "scrollZoom": False})
             with st.container(key="mobile_farm_chart"):
-                st.plotly_chart(mobile_fig, width="stretch", theme=None, key="farm_mobile", config={"responsive": True, "displayModeBar": vertical_bar, "scrollZoom": vertical_bar})
+                st.plotly_chart(mobile_fig, width=chart_width if vertical_bar else "stretch", theme=None, key="farm_mobile", config={"responsive": True, "displayModeBar": False, "scrollZoom": False})
 with right:
     with st.container(key="chart_card_incentive"):
         st.subheader("Incentive Distribution")
@@ -466,14 +467,14 @@ with right:
             fig.update_layout(height=440, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124")
             vertical_bar = chart_type == "📶 Vertical Bar"
             if vertical_bar:
-                fig.update_yaxes(fixedrange=True)
-                fig.update_layout(dragmode="zoom")
+                chart_width = st.slider("图表宽度", 800, 4000, 1200, step=100, key="width_incentive")
+                fig.update_layout(dragmode=False)
             mobile_fig = fig.to_dict()
             mobile_fig["layout"]["height"] = 360
             if is_pie:
                 mobile_fig["layout"]["margin"] = dict(l=10, r=10, t=30, b=30)
                 mobile_fig["data"][0]["textfont"] = dict(size=8)
             with st.container(key="desktop_incentive_chart"):
-                st.plotly_chart(fig, width="stretch", theme=None, key="incentive_desktop", config={"responsive": True, "displayModeBar": vertical_bar, "scrollZoom": vertical_bar})
+                st.plotly_chart(fig, width=chart_width if vertical_bar else "stretch", theme=None, key="incentive_desktop", config={"responsive": True, "displayModeBar": False, "scrollZoom": False})
             with st.container(key="mobile_incentive_chart"):
-                st.plotly_chart(mobile_fig, width="stretch", theme=None, key="incentive_mobile", config={"responsive": True, "displayModeBar": vertical_bar, "scrollZoom": vertical_bar})
+                st.plotly_chart(mobile_fig, width=chart_width if vertical_bar else "stretch", theme=None, key="incentive_mobile", config={"responsive": True, "displayModeBar": False, "scrollZoom": False})

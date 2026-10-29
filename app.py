@@ -369,9 +369,14 @@ with st.container(key="chart_card_crops"):
                 fig = px.line(crop_totals, x="Crop", y="Shipment", text="Shipment", markers=True, labels={"Shipment": "Shipment (kg)"}, color_discrete_sequence=["#4285f4"])
                 fig.update_traces(texttemplate="%{text:,.1f}", textposition="top center", cliponaxis=False)
             fig.update_xaxes(categoryorder="array", categoryarray=crop_names, tickangle=-45, automargin=True)
+            if chart_type == "📶 Vertical Bar":
+                fig.update_xaxes(tickmode="array", tickvals=crop_names, ticktext=crop_names, tickfont=dict(size=10))
             fig.update_yaxes(automargin=True)
             fig.update_layout(height=max(320, min(800, len(crop_totals) * 32 + 80)), margin=dict(l=10, r=10, t=30, b=30))
-        fig.update_layout(dragmode=False, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
+        vertical_bar = chart_type == "📶 Vertical Bar"
+        if vertical_bar:
+            fig.update_yaxes(fixedrange=True)
+        fig.update_layout(dragmode="zoom" if vertical_bar else False, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
         mobile_fig = fig.to_dict()
         if chart_type == "📊 Horizontal Bar":
             mobile_fig["layout"]["yaxis"].update(ticktext=["<br>".join(escape(line) for line in wrap(name, width=18, break_long_words=False, break_on_hyphens=False)) for name in crop_names], tickfont={"size": max(6, min(9, 680 // max(1, 2 * len(crop_names))))}, title={"standoff": 5})
@@ -379,9 +384,9 @@ with st.container(key="chart_card_crops"):
         elif chart_type == "🍩 Donut / Pie":
             mobile_fig["layout"]["margin"] = dict(l=10, r=10, t=30, b=30)
         with st.container(key="desktop_crop_chart"):
-            st.plotly_chart(fig, width="stretch", theme=None, key="crop_desktop", config={"responsive": True, "scrollZoom": False, "displayModeBar": False})
+            st.plotly_chart(fig, width=max(800, len(crop_names) * 110) if vertical_bar else "stretch", theme=None, key="crop_desktop", config={"responsive": True, "scrollZoom": vertical_bar, "displayModeBar": vertical_bar})
         with st.container(key="mobile_crop_chart"):
-            st.plotly_chart(mobile_fig, width="stretch", theme=None, key="crop_mobile", config={"responsive": True, "scrollZoom": False, "displayModeBar": False})
+            st.plotly_chart(mobile_fig, width=max(800, len(crop_names) * 110) if vertical_bar else "stretch", theme=None, key="crop_mobile", config={"responsive": True, "scrollZoom": vertical_bar, "displayModeBar": vertical_bar})
 
 left, right = st.columns(2)
 with left:
@@ -418,12 +423,16 @@ with left:
                     fig.update_yaxes(range=[min(0, farm_totals["Shipment"].min() * 1.2), farm_totals["Shipment"].max() * 1.18])
                 fig.update_layout(margin=dict(t=45))
             fig.update_layout(height=440, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
+            vertical_bar = chart_type == "📶 Vertical Bar"
+            if vertical_bar:
+                fig.update_yaxes(fixedrange=True)
+                fig.update_layout(dragmode="zoom")
             mobile_fig = fig.to_dict()
             mobile_fig["layout"]["height"] = 360
             with st.container(key="desktop_farm_chart"):
-                st.plotly_chart(fig, width="stretch", theme=None, key="farm_desktop", config={"responsive": True, "displayModeBar": False, "scrollZoom": False})
+                st.plotly_chart(fig, width="stretch", theme=None, key="farm_desktop", config={"responsive": True, "displayModeBar": vertical_bar, "scrollZoom": vertical_bar})
             with st.container(key="mobile_farm_chart"):
-                st.plotly_chart(mobile_fig, width="stretch", theme=None, key="farm_mobile", config={"responsive": True, "displayModeBar": False, "scrollZoom": False})
+                st.plotly_chart(mobile_fig, width="stretch", theme=None, key="farm_mobile", config={"responsive": True, "displayModeBar": vertical_bar, "scrollZoom": vertical_bar})
 with right:
     with st.container(key="chart_card_incentive"):
         st.subheader("Incentive Distribution")
@@ -455,12 +464,16 @@ with right:
                 fig.update_yaxes(tickprefix="RM ", tickformat=",")
                 fig.update_layout(margin=dict(t=60, r=30))
             fig.update_layout(height=440, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124")
+            vertical_bar = chart_type == "📶 Vertical Bar"
+            if vertical_bar:
+                fig.update_yaxes(fixedrange=True)
+                fig.update_layout(dragmode="zoom")
             mobile_fig = fig.to_dict()
             mobile_fig["layout"]["height"] = 360
             if is_pie:
                 mobile_fig["layout"]["margin"] = dict(l=10, r=10, t=30, b=30)
                 mobile_fig["data"][0]["textfont"] = dict(size=8)
             with st.container(key="desktop_incentive_chart"):
-                st.plotly_chart(fig, width="stretch", theme=None, key="incentive_desktop", config={"responsive": True, "displayModeBar": False, "scrollZoom": False})
+                st.plotly_chart(fig, width="stretch", theme=None, key="incentive_desktop", config={"responsive": True, "displayModeBar": vertical_bar, "scrollZoom": vertical_bar})
             with st.container(key="mobile_incentive_chart"):
-                st.plotly_chart(mobile_fig, width="stretch", theme=None, key="incentive_mobile", config={"responsive": True, "displayModeBar": False, "scrollZoom": False})
+                st.plotly_chart(mobile_fig, width="stretch", theme=None, key="incentive_mobile", config={"responsive": True, "displayModeBar": vertical_bar, "scrollZoom": vertical_bar})

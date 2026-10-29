@@ -375,8 +375,7 @@ with st.container(key="chart_card_crops"):
             fig.update_layout(height=max(320, min(800, len(crop_totals) * 32 + 80)), margin=dict(l=10, r=10, t=30, b=30))
         vertical_bar = chart_type == "📶 Vertical Bar"
         if vertical_bar:
-            default_width = min(4000, max(800, ((len(crop_names) * 110 + 99) // 100) * 100))
-            chart_width = st.slider("图表宽度", 800, 4000, default_width, step=100, key="width_crops")
+            chart_width = max(800, len(crop_names) * 110)
         fig.update_layout(dragmode=False, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
         mobile_fig = fig.to_dict()
         if chart_type == "📊 Horizontal Bar":
@@ -426,7 +425,7 @@ with left:
             fig.update_layout(height=440, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124", uniformtext=dict(mode="show"))
             vertical_bar = chart_type == "📶 Vertical Bar"
             if vertical_bar:
-                chart_width = st.slider("图表宽度", 800, 4000, 800, step=100, key="width_farm")
+                chart_width = max(800, len(farm_names) * 110)
                 fig.update_layout(dragmode=False)
             mobile_fig = fig.to_dict()
             mobile_fig["layout"]["height"] = 360
@@ -467,7 +466,7 @@ with right:
             fig.update_layout(height=440, paper_bgcolor="white", plot_bgcolor="white", font_color="#202124")
             vertical_bar = chart_type == "📶 Vertical Bar"
             if vertical_bar:
-                chart_width = st.slider("图表宽度", 800, 4000, 1200, step=100, key="width_incentive")
+                chart_width = max(800, len(group_names) * 110)
                 fig.update_layout(dragmode=False)
             mobile_fig = fig.to_dict()
             mobile_fig["layout"]["height"] = 360

@@ -107,8 +107,33 @@ st.markdown("""
         border-color: #CBD5E1;
     }
     div[class*="st-key-chart_card_"] { overflow: visible !important; height: auto !important; }
+    div[class*="st-key-desktop_crop_chart"], div[class*="st-key-mobile_crop_chart"],
+    div[class*="st-key-desktop_farm_chart"], div[class*="st-key-mobile_farm_chart"],
+    div[class*="st-key-desktop_incentive_chart"], div[class*="st-key-mobile_incentive_chart"] {
+        overflow-x: auto !important; overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent;
+    }
+    div[class*="st-key-desktop_crop_chart"] [data-testid="stPlotlyChart"],
+    div[class*="st-key-mobile_crop_chart"] [data-testid="stPlotlyChart"],
+    div[class*="st-key-desktop_farm_chart"] [data-testid="stPlotlyChart"],
+    div[class*="st-key-mobile_farm_chart"] [data-testid="stPlotlyChart"],
+    div[class*="st-key-desktop_incentive_chart"] [data-testid="stPlotlyChart"],
+    div[class*="st-key-mobile_incentive_chart"] [data-testid="stPlotlyChart"] { min-width: 800px; }
+    div[class*="st-key-desktop_crop_chart"]::-webkit-scrollbar,
+    div[class*="st-key-mobile_crop_chart"]::-webkit-scrollbar,
+    div[class*="st-key-desktop_farm_chart"]::-webkit-scrollbar,
+    div[class*="st-key-mobile_farm_chart"]::-webkit-scrollbar,
+    div[class*="st-key-desktop_incentive_chart"]::-webkit-scrollbar,
+    div[class*="st-key-mobile_incentive_chart"]::-webkit-scrollbar { height: 6px; }
+    div[class*="st-key-desktop_crop_chart"]::-webkit-scrollbar-thumb,
+    div[class*="st-key-mobile_crop_chart"]::-webkit-scrollbar-thumb,
+    div[class*="st-key-desktop_farm_chart"]::-webkit-scrollbar-thumb,
+    div[class*="st-key-mobile_farm_chart"]::-webkit-scrollbar-thumb,
+    div[class*="st-key-desktop_incentive_chart"]::-webkit-scrollbar-thumb,
+    div[class*="st-key-mobile_incentive_chart"]::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
     div.st-key-chart_card_crops .js-plotly-plot,
-    div.st-key-chart_card_crops .js-plotly-plot * { touch-action: pan-y !important; }
+    div.st-key-chart_card_crops .js-plotly-plot * { touch-action: pan-x pan-y !important; }
     .mobile-filter-hint, .st-key-mobile_crop_chart, .st-key-mobile_farm_chart, .st-key-mobile_incentive_chart { display: none; }
     @media (max-width: 768px) {
         section[data-testid="stMain"] [data-testid="stHorizontalBlock"] {
@@ -334,7 +359,7 @@ with st.container(key="chart_card_crops"):
                 cumulative += value
             # Balance the number of outside labels on either side of the ring.
             rotation = min(range(360), key=lambda angle: abs(sum(1 for p in midpoints if (p + angle) % 360 < 180) * 2 - len(midpoints)))
-            fig.update_traces(sort=False, direction="clockwise", rotation=rotation, automargin=False, textposition="outside", text=["<br>".join(escape(line) for line in wrap(name, width=18, break_long_words=False)) for name in crop_names], texttemplate="%{text}<br>%{value:,.1f} kg (%{percent:.1%})", textfont=dict(size=9), domain=dict(x=[0.25, 0.75], y=[0.32, 0.68]))
+            fig.update_traces(sort=False, direction="clockwise", rotation=rotation, automargin=False, textposition="outside", text=["<br>".join(escape(line) for line in wrap(name, width=18, break_long_words=False)) for name in crop_names], texttemplate="%{text}<br>%{value:,.1f} kg (%{percent:.1%})", textfont=dict(size=9), domain=dict(x=[0.25, 0.75], y=[0.18, 0.82]))
             fig.update_layout(height=max(320, min(800, len(crop_totals) * 32 + 80)), margin=dict(l=10, r=10, t=30, b=30), showlegend=False)
         else:
             if chart_type == "📶 Vertical Bar":
